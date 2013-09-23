@@ -97,7 +97,7 @@ def _get_name(email):
 
 
 def get_test_data():
-    fin = open("tests/data/20_messages.json", "r")
+    fin = open("tests/data/1000_messages.json", "r")
     return json.load(fin)
 
 

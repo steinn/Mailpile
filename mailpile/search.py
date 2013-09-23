@@ -95,20 +95,23 @@ class PostingList(object):
     config = session.config
     sig = sig or cls.WordSig(word, config)
     fd, fn = cls.GetFile(session, sig, mode='a')
-    if (compact
-    and (os.path.getsize(os.path.join(config.postinglist_dir(fn), fn)) >
-             (1024*config.get('postinglist_kb', cls.MAX_SIZE))-(cls.HASH_LEN*6))
-    and (random.randint(0, 50) == 1)):
-      # This will compact the files and split out hot-spots, but we only bother
-      # "once in a while" when the files are "big".
-      fd.close()
-      pls = cls(session, word, sig=sig)
-      for mail_id in mail_ids:
-        pls.append(mail_id)
-      pls.save()
-    else:
-      # Quick and dirty append is the default.
-      fd.write('%s\t%s\n' % (sig, '\t'.join(mail_ids)))
+
+    if compact and random.randint(0, 50) == 1:
+      fsize = os.path.getsize(os.path.join(config.postinglist_dir(fn), fn))
+      max_size = config.get('postinglist_kb', cls.MAX_SIZE)
+      max_fsize = 1024 * max_size - (cls.HASH_LEN * 6)
+      if fsize > max_fsize:
+        # This will compact the files and split out hot-spots,
+        # but we only bother "once in a while" when the files are "big".
+        fd.close()
+        pls = cls(session, word, sig=sig)
+        for mail_id in mail_ids:
+          pls.append(mail_id)
+        pls.save()
+        return
+
+    # Quick and dirty append is the default.
+    fd.write('%s\t%s\n' % (sig, '\t'.join(mail_ids)))
 
   @classmethod
   def WordSig(cls, word, config):
@@ -231,11 +234,13 @@ class PostingList(object):
 GLOBAL_POSTING_LIST = None
 class GlobalPostingList(PostingList):
 
+
   @classmethod
+
   def Optimize(cls, session, idx, force=False, quick=False):
     pls = GlobalPostingList(session, '')
     count = 0
-    keys = sorted(GLOBAL_POSTING_LIST.keys())
+    keys = sorted(GLOBAL_POSTING_LIST.iterkeys())
     for sig in keys:
       if (count % 50) == 0:
         session.ui.mark(('Updating search index... %d%% (%s)'
@@ -1071,4 +1076,3 @@ class MailIndex(object):
       self.STATS[tid] = [len(hits), len(hits & new_msgs)]
 
     return self.STATS
-

@@ -276,6 +276,18 @@ class DumbWorker(Worker):
     pass
 
 
+def cache(func):
+  def _wrapper(self, *args, **kwargs):
+    cr = _wrapper._cache.get(args)
+    if cr:
+      return cr
+    r = func(self, *args, **kwargs)
+    _wrapper._cache[args] = r
+    return r
+  _wrapper._cache = {}
+  return _wrapper
+
+
 ##[ The Configuration Manager ]###############################################
 
 class ConfigManager(dict):
@@ -635,6 +647,7 @@ class ConfigManager(dict):
     return self.get('mailindex_file',
                     os.path.join(self.workdir, 'mailpile.idx'))
 
+  @cache
   def postinglist_dir(self, prefix):
     d = self.get('postinglist_dir',
                  os.path.join(self.workdir, 'search'))
